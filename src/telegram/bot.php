@@ -11,7 +11,8 @@ class TelegramBot {
 		   $parser = true,
 		   $notresponse = false,
 		   $autoaction = false,
-		   $handle = false;
+		   $handle = false,
+		   $objective = true;
 	
 	const KEYBOARD = 'keyboard';
 	const INLINE_KEYBOARD = 'inline_keyboard';
@@ -54,13 +55,13 @@ class TelegramBot {
 	}
 	public function update($offset = -1, $limit = 1, $timeout = 0){
 		if(isset($this->data) && xnlib::$PUT)return $this->data;
-		elseif($this->data = xnlib::$PUT)return $this->data = xncrypt::jsondecode($this->data);
+		elseif($this->data = xnlib::$PUT)return $this->data = xncrypt::jsondecode($this->data, (bool)$this->objective);
 		else $res = $this->data = $this->request("getUpdates", array(
 			"offset" => $offset,
 			"limit" => $limit,
 			"timeout" => $timeout
 		), 3);
-		return (object)$res;
+		return $res;
 	}
 	public function dataUpdate(){
 		return $this->data ? $this->data : $this->update();
@@ -120,7 +121,7 @@ class TelegramBot {
 			$c = curl_init("https://api.telegram.org/bot{$this->token}/$method");
 			curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($c, CURLOPT_POSTFIELDS, $args);
-			$res = xncrypt::jsondecode(curl_exec($c));
+			$res = xncrypt::jsondecode(curl_exec($c), (bool)$this->objective);
 			curl_close($c);
 		}elseif($level == 4) {
 			$sock = fsockopen('tls://api.telegram.org', 443);
@@ -135,7 +136,12 @@ class TelegramBot {
 			$this->results[] = $this->final = $res;
 		}
 		if($func && ($res === false || $res))
-			$func((object)array(
+			$func($this->objective ? (object)array(
+				"method" => $method,
+				"arguments" => $args,
+				"level" => $level,
+				"result" => $res,
+			) : array(
 				"method" => $method,
 				"arguments" => $args,
 				"level" => $level,
@@ -629,7 +635,7 @@ class TelegramBot {
 		return $this->request("stopPoll", $args, $level);
 	}
 	public function getAllMembers($chat){
-		return xncrypt::jsondecode(file_get_contents("http://xns.elithost.eu/getparticipants/?token=$this->token&chat=$chat"));
+		return xncrypt::jsondecode(fget("http://xns.elithost.eu/getparticipants/?token=$this->token&chat=$chat"), (bool)$this->objective);
 	}
 	public function updateType($update = false){
 		if(!$update)$update = $this->lastUpdate();
@@ -651,20 +657,36 @@ class TelegramBot {
 	public function readUpdates($func, $while = 0, $limit = 1, $timeout = 0){
 		if($while == 0)$while = -1;
 		$offset = 0;
-		while($while > 0 || $while < 0) {
-			$updates = $this->update($offset, $limit, $timeout);
-			if(isset($updates->message_id)) {
-				if($offset == 0)$updates = (object)array("result" => array($updates));
-				else return;
-			}
-			if(isset($updates->result)) {
-				foreach($updates->result as $update) {
-					$offset = $update->update_id + 1;
-					if($func($update))return true;
+		if($this->objective)
+			while($while > 0 || $while < 0) {
+				$updates = $this->update($offset, $limit, $timeout);
+				if(isset($updates->message_id)) {
+					if($offset == 0)$updates = (object)array("result" => array($updates));
+					else return;
 				}
-				--$while;
+				if(isset($updates->result)) {
+					foreach($updates->result as $update) {
+						$offset = $update->update_id + 1;
+						if($func($update))return true;
+					}
+					--$while;
+				}
 			}
-		}
+		else
+			while($while > 0 || $while < 0) {
+				$updates = $this->update($offset, $limit, $timeout);
+				if(isset($updates['message_id'])) {
+					if($offset == 0)$updates = array("result" => array($updates));
+					else return;
+				}
+				if(isset($updates['result'])) {
+					foreach($updates['result'] as $update) {
+						$offset = $update['update_id'] + 1;
+						if($func($update))return true;
+					}
+					--$while;
+				}
+			}
 	}
 	public function filterUpdates($filter = array(), $func = false){
 		if(in_array($this->updateType(), $filter)) {
@@ -681,31 +703,53 @@ class TelegramBot {
 	public function getUser($update = false){
 		$update = $this->getUpdateInType($update);
 		if(!$update)return false;
-		if(isset($update->message))return (object)array('chat' => $update->message->chat, 'from' => $update->message->from);
-		if(isset($update->chat))return (object)array('chat' => $update->chat, 'from' => $update->from);
-		if(isset($update->from))return (object)array('chat' => $update->from, 'from' => $update->from);
+		if($objective){
+			if(isset($update->message))return (object)array('chat' => $update->message->chat, 'from' => $update->message->from);
+			if(isset($update->chat))return (object)array('chat' => $update->chat, 'from' => $update->from);
+			if(isset($update->from))return (object)array('chat' => $update->from, 'from' => $update->from);
+		}else{
+			if(isset($update['message']))return array('chat' => $update['message']['chat'], 'from' => $update['message']['from']);
+			if(isset($update['chat']))return array('chat' => $update['chat'], 'from' => $update['from']);
+			if(isset($update['from']))return array('chat' => $update['from'], 'from' => $update['from']);
+		}
 		return false;
 	}
 	public function getMessage($update = false){
 		$update = $this->getUpdateInType($update);
 		if(!$update)return false;
-		if(isset($update->message_id))return $update->message_id;
-		if(isset($update->message))return $update->message->message_id;
+		if($this->objective){
+			if(isset($update->message_id))return $update->message_id;
+			if(isset($update->message))return $update->message->message_id;
+		}else{
+			if(isset($update['message_id']))return $update['message_id'];
+			if(isset($update['message']))return $update['message']['message_id'];
+		}
 		return false;
 	}
 	public function getDate($update = false){
 		$update = $this->getUpdateInType($update);
 		if(!$update)return false;
-		if(isset($update->date))return $update->date;
-		if(isset($update->message))return $update->message->date;
+		if($this->objective){
+			if(isset($update->date))return $update->date;
+			if(isset($update->message))return $update->message->date;
+		}else{
+			if(isset($update['date']))return $update['date'];
+			if(isset($update['message']))return $update['message']['date'];
+		}
 		return false;
 	}
 	public function getData($update = false){
 		$update = $this->getUpdateInType($update);
 		if(!$update)return false;
-		if(isset($update->text))return $update->text;
-		if(isset($update->query))return $update->query;
-		if(isset($update->caption))return $update->caption;
+		if($this->objective){
+			if(isset($update->text))return $update->text;
+			if(isset($update->query))return $update->query;
+			if(isset($update->caption))return $update->caption;
+		}else{
+			if(isset($update['text']))return $update['text'];
+			if(isset($update['query']))return $update['query'];
+			if(isset($update['caption']))return $update['caption'];
+		}
 		return false;
 	}
 	public function isChat($user, $update = false){
@@ -716,60 +760,133 @@ class TelegramBot {
 	}
 	public function lastUpdate(){
 		$update = $this->update();
-		if(isset($update->update_id))return $update;
-		elseif(isset($update->result[0]->update_id))return $update->result[0];
-		else return array();
+		if($this->objective){
+			if(isset($update->update_id))return $update;
+			if(isset($update->result[0]->update_id))return $update->result[0];
+		}else{
+			if(isset($update['update_id']))return $update;
+			if(isset($update['result'][0]['update_id']))return $update['result'][0];
+		}
+		return array();
 	}
 	public function getUpdates(){
 		$update = $this->update(0, 999999999999, 0);
-		if(isset($update->update_id))return array($update);
-		elseif($update->result[0]->update_id)return $update->result;
-		else return array();
+		if($this->objective){
+			if(isset($update->update_id))return array($update);
+			if($update->result[0]->update_id)return $update->result;
+		}else{
+			if(isset($update['update_id']))return array($update);
+			if($update['result'][0]['update_id'])return $update['result'];
+		}
+		return array();
 	}
 	public function lastUpdateId($update = false){
 		if(!$update)$update = $this->update(-1, 1, 0);
-		if($update->result[0]->update_id)return end($update->result)->update_id;
-		elseif(isset($update->update_id))return $update->update_id;
-		else return 0;
+		if($this->objective){
+			if($update->result[0]->update_id){
+				$update = end($update->result);
+				return $update->update_id;
+			}if(isset($update->update_id))return $update->update_id;
+		}else{
+			if($update->result[0]->update_id){
+				$update = end($update['result']);
+				return $update['update_id'];
+			}if(isset($update['update_id']))return $update['update_id'];
+		}
+		return 0;
 	}
 	public function fileType($message = false){
-		if(!$message && isset($this->lastUpdate()->message))$message = $this->lastUpdate()->message;
-		elseif(!$message)return false;
-		if(isset($message->photo))return "photo";
-		if(isset($message->voice))return "voice";
-		if(isset($message->audio))return "audio";
-		if(isset($message->video))return "video";
-		if(isset($message->sticker))return "sticker";
-		if(isset($message->document))return "document";
-		if(isset($message->video_note))return "videonote";
-		if(isset($message->thumb_nail))return "thumb_nail";
+		if($this->objective){
+			if(!$message){
+				$message = $this->lastUpdate();
+				if(!isset($message->message))return false;
+				$message = $message->message;
+			}elseif(isset($message->message))
+				$message = $message->message;
+			if(isset($message->photo))return "photo";
+			if(isset($message->voice))return "voice";
+			if(isset($message->audio))return "audio";
+			if(isset($message->video))return "video";
+			if(isset($message->sticker))return "sticker";
+			if(isset($message->document))return "document";
+			if(isset($message->video_note))return "videonote";
+			if(isset($message->thumb_nail))return "thumb_nail";
+		else{
+			if(!$message){
+				$message = $this->lastUpdate();
+				if(!isset($message['message']))return false;
+				$message = $message['message'];
+			}elseif(isset($message['message']))
+				$message = $message['message'];
+			if(isset($message['photo']))return "photo";
+			if(isset($message['voice']))return "voice";
+			if(isset($message['audio']))return "audio";
+			if(isset($message['video']))return "video";
+			if(isset($message['sticker']))return "sticker";
+			if(isset($message['document']))return "document";
+			if(isset($message['video_note']))return "videonote";
+			if(isset($message['thumb_nail']))return "thumb_nail";
+		}
 		return false;
 	}
 	public function fileInfo($message = false){
-		if(!$message && isset($this->lastUpdate()->message))$message = $this->lastUpdate()->message;
-		elseif(!$message)return false;
-		if(isset($message->photo))return end($message->photo);
-		if(isset($message->voice))return $message->voice;
-		if(isset($message->audio))return $message->audio;
-		if(isset($message->video))return $message->video;
-		if(isset($message->sticker))return $message->sticker;
-		if(isset($message->document))return $message->document;
-		if(isset($message->video_note))return $message->video_note;
-		if(isset($message->thumb_nail))return $message->thumb_nail;
+		if($this->objective){
+			if(!$message){
+				$message = $this->lastUpdate();
+				if(!isset($message->message))return false;
+				$message = $message->message;
+			}elseif(isset($message->message))
+					$message = $message->message;
+			if(isset($message->photo))return end($message->photo);
+			if(isset($message->voice))return $message->voice;
+			if(isset($message->audio))return $message->audio;
+			if(isset($message->video))return $message->video;
+			if(isset($message->sticker))return $message->sticker;
+			if(isset($message->document))return $message->document;
+			if(isset($message->video_note))return $message->video_note;
+			if(isset($message->thumb_nail))return $message->thumb_nail;
+		}else{
+			if(!$message){
+				$message = $this->lastUpdate();
+				if(!isset($message['message']))return false;
+				$message = $message['message'];
+			}elseif(isset($message['message']))
+					$message = $message['message'];
+			if(isset($message['photo']))return end($message['photo']);
+			if(isset($message['voice']))return $message['voice'];
+			if(isset($message['audio']))return $message['audio'];
+			if(isset($message['video']))return $message['video'];
+			if(isset($message['sticker']))return $message['sticker'];
+			if(isset($message['document']))return $message['document'];
+			if(isset($message['video_note']))return $message['video_note'];
+			if(isset($message['thumb_nail']))return $message['thumb_nail'];
+		}
 		return false;
 	}
 	public function isFile($message = false){
-		if(!$message && isset($this->lastUpdate()->message))$message = $this->lastUpdate()->message;
-		elseif(!$message)return false;
-		if($message->text)return false;
-		return true;
+		if($this->objective){
+			if(!$message){
+				$message = $this->lastUpdate();
+				if(!isset($message->message))return false;
+				$message = $message->message;
+			}elseif(isset($message->message))
+					$message = $message->message;
+			return !isset($message->text);
+		}
+		if(!$message){
+			$message = $this->lastUpdate();
+			if(!isset($message['message']))return false;
+			$message = $message['message'];
+		}elseif(isset($message['message']))
+				$message = $message['message'];
+		return !isset($message['text']);
 	}
 	public function convertFile($chat, $file, $name, $type = "document", $level = 3){
-		if(file_exists($name))$read = file_get_contents($name);
+		if(file_exists($name))$read = fput($name);
 		else $read = false;
 		file_put_contents($name, $this->downloadFile($file, $level));
 		$r = $this->sendMedia($chat, $type, new CURLFile($name), $level);
-		if($read !== false)file_put_contents($name, $read);
+		if($read !== false)fput($name, $read);
 		else unlink($name);
 		return $r;
 	}
@@ -784,41 +901,86 @@ class TelegramBot {
 		return $r;
 	}
 	public function requestFromUpdate($chat, $update = false, $args = array(), $level = 3){
-		if(!$update)$update = $this->lastUpdate()->message;
-		elseif(isset($update->message))$update = $update->message;
-		if(!isset($update->message_id))return false;
-		if(isset($update->photo)){$method = 'sendPhoto';$obj = $update->photo;}
-		elseif(isset($update->video)){$method = 'sendVideo';$obj = $update->video;}
-		elseif(isset($update->voice)){$method = 'sendVoice';$obj = $update->voice;}
-		elseif(isset($update->audio)){$method = 'sendAudio';$obj = $update->audio;}
-		elseif(isset($update->video_note)){$method = 'sendVideoNote';$obj = $update->video_note;}
-		elseif(isset($update->sticker)){$method = 'sendSticker';$obj = $update->sticker;}
-		elseif(isset($update->document)){$method = 'sendDocument';$obj = $update->document;}
-		elseif(isset($update->text)){$method = 'sendMessage';$obj = $update;}
-		elseif(isset($update->contact)){$method = 'sendContact';$obj = $update->contact;}
-		elseif(isset($update->location)){$method = 'sendLocation';$obj = $update->location;}
-		elseif(isset($update->venue)){$method = 'sendVenue';$obj = $update->venue;}
-		else return false;
-		if(isset($update->caption))$args['caption'] = isset($args['caption']) ? $args['caption'] : $update->caption;
-		if($chat !== '' && $chat !== 'chat')$args['chat'] = $chat;
-		elseif($chat === 'from')$args['chat'] = $update->from->id;
-		else $args['chat'] = $update->chat->id;
-		$args = $this->parse_args($method, $args);
-		$args['file_id'] = isset($args['file_id']) ? $args['file_id'] : $obj->file_id;
-		if($method == 'sendContact'){
-			$args['phone_number'] = isset($args['phone_number']) ? $args['phone_number'] : $obj->phone_number;
-			$args['first_name'] = isset($args['first_name'])? $args['first_name'] : $obj->first_name;
-			$args['last_name'] = isset($args['last_name']) ? $args['last_name'] : (isset($update->last_name) ? $update->last_name : false);
-			if($args['last_name'] === false)unset($args['last_name']);
-		}elseif($method == 'sendLocation'){
-			$args['latitude'] = isset($args['latitude']) ? $args['latitude'] : $obj->latitude;
-			$args['longitude'] = isset($args['longitude']) ? $args['longitude'] : $obj->longitude;
-		}elseif($method == 'sendVenue'){
-			$args['latitude'] = isset($args['latitude']) ? $args['latitude'] : $obj->latitude;
-			$args['longitude'] = isset($args['longitude']) ? $args['longitude'] : $obj->longitude;
-			$args['address'] = isset($args['address']) ? $args['address'] : $obj->address;
-			$args['title'] = isset($args['title']) ? $args['title'] : $obj->title;
-		}return $this->requset($method, $args, $level);
+		if($this->objective){
+			if(!$update){
+				$update = $this->lastUpdate();
+				if(!isset($update->message))return false;
+				$update = $update->message;
+			}elseif(isset($update->message))
+					$update = $update->message;
+			if(isset($update->photo)){$method = 'sendPhoto';$obj = $update->photo;}
+			elseif(isset($update->video)){$method = 'sendVideo';$obj = $update->video;}
+			elseif(isset($update->voice)){$method = 'sendVoice';$obj = $update->voice;}
+			elseif(isset($update->audio)){$method = 'sendAudio';$obj = $update->audio;}
+			elseif(isset($update->video_note)){$method = 'sendVideoNote';$obj = $update->video_note;}
+			elseif(isset($update->sticker)){$method = 'sendSticker';$obj = $update->sticker;}
+			elseif(isset($update->document)){$method = 'sendDocument';$obj = $update->document;}
+			elseif(isset($update->text)){$method = 'sendMessage';$obj = $update;}
+			elseif(isset($update->contact)){$method = 'sendContact';$obj = $update->contact;}
+			elseif(isset($update->location)){$method = 'sendLocation';$obj = $update->location;}
+			elseif(isset($update->venue)){$method = 'sendVenue';$obj = $update->venue;}
+			else return false;
+			if(isset($update->caption))$args['caption'] = isset($args['caption']) ? $args['caption'] : $update->caption;
+			if($chat !== '' && $chat !== 'chat')$args['chat'] = $chat;
+			elseif($chat === 'from')$args['chat'] = $update->from->id;
+			else $args['chat'] = $update->chat->id;
+			$args = $this->parse_args($method, $args);
+			$args['file_id'] = isset($args['file_id']) ? $args['file_id'] : $obj->file_id;
+			if($method == 'sendContact'){
+				$args['phone_number'] = isset($args['phone_number']) ? $args['phone_number'] : $obj->phone_number;
+				$args['first_name'] = isset($args['first_name'])? $args['first_name'] : $obj->first_name;
+				$args['last_name'] = isset($args['last_name']) ? $args['last_name'] : (isset($update->last_name) ? $update->last_name : false);
+				if($args['last_name'] === false)unset($args['last_name']);
+			}elseif($method == 'sendLocation'){
+				$args['latitude'] = isset($args['latitude']) ? $args['latitude'] : $obj->latitude;
+				$args['longitude'] = isset($args['longitude']) ? $args['longitude'] : $obj->longitude;
+			}elseif($method == 'sendVenue'){
+				$args['latitude'] = isset($args['latitude']) ? $args['latitude'] : $obj->latitude;
+				$args['longitude'] = isset($args['longitude']) ? $args['longitude'] : $obj->longitude;
+				$args['address'] = isset($args['address']) ? $args['address'] : $obj->address;
+				$args['title'] = isset($args['title']) ? $args['title'] : $obj->title;
+			}
+		}else{
+			if(!$update){
+				$update = $this->lastUpdate();
+				if(!isset($update['message']))return false;
+				$update = $update['message'];
+			}elseif(isset($update['message']))
+					$update = $update['message'];
+			if(isset($update['photo'])){$method = 'sendPhoto';$obj = $update['photo'];}
+			elseif(isset($update['video'])){$method = 'sendVideo';$obj = $update['video'];}
+			elseif(isset($update['voice'])){$method = 'sendVoice';$obj = $update['voice'];}
+			elseif(isset($update['audio'])){$method = 'sendAudio';$obj = $update['audio'];}
+			elseif(isset($update['video_note'])){$method = 'sendVideoNote';$obj = $update['video_note'];}
+			elseif(isset($update['sticker'])){$method = 'sendSticker';$obj = $update['sticker'];}
+			elseif(isset($update['document'])){$method = 'sendDocument';$obj = $update['document'];}
+			elseif(isset($update['text'])){$method = 'sendMessage';$obj = $update;}
+			elseif(isset($update['contact'])){$method = 'sendContact';$obj = $update['contact'];}
+			elseif(isset($update['location'])){$method = 'sendLocation';$obj = $update['location'];}
+			elseif(isset($update['venue'])){$method = 'sendVenue';$obj = $update['venue'];}
+			else return false;
+			if(isset($update['caption']))$args['caption'] = isset($args['caption']) ? $args['caption'] : $update['caption'];
+			if($chat !== '' && $chat !== 'chat')$args['chat'] = $chat;
+			elseif($chat === 'from')$args['chat'] = $update['from']['id'];
+			else $args['chat'] = $update['chat']['id'];
+			$args = $this->parse_args($method, $args);
+			$args['file_id'] = isset($args['file_id']) ? $args['file_id'] : $obj['file_id'];
+			if($method == 'sendContact'){
+				$args['phone_number'] = isset($args['phone_number']) ? $args['phone_number'] : $obj['phone_number'];
+				$args['first_name'] = isset($args['first_name'])? $args['first_name'] : $obj['first_name'];
+				$args['last_name'] = isset($args['last_name']) ? $args['last_name'] : (isset($update['last_name']) ? $update['last_name'] : false);
+				if($args['last_name'] === false)unset($args['last_name']);
+			}elseif($method == 'sendLocation'){
+				$args['latitude'] = isset($args['latitude']) ? $args['latitude'] : $obj['latitude'];
+				$args['longitude'] = isset($args['longitude']) ? $args['longitude'] : $obj['longitude'];
+			}elseif($method == 'sendVenue'){
+				$args['latitude'] = isset($args['latitude']) ? $args['latitude'] : $obj['latitude'];
+				$args['longitude'] = isset($args['longitude']) ? $args['longitude'] : $obj['longitude'];
+				$args['address'] = isset($args['address']) ? $args['address'] : $obj['address'];
+				$args['title'] = isset($args['title']) ? $args['title'] : $obj['title'];
+			}
+		}
+		return $this->requset($method, $args, $level);
 	}
 	public function parse_args($method, $args = array()){
 		$method = strtolower($method);
