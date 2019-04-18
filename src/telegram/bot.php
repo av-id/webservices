@@ -55,25 +55,25 @@ class TelegramBot {
 	public function update($offset = -1, $limit = 1, $timeout = 0){
 		if(isset($this->data) && xnlib::$PUT)return $this->data;
 		elseif($this->data = xnlib::$PUT)return $this->data = xncrypt::jsondecode($this->data);
-		else $res = $this->data = $this->request("getUpdates", array("offset" => $offset, "limit" => $limit, "timeout" => $timeout), 3);
+		else $res = $this->data = $this->request("getUpdates", array(
+			"offset" => $offset,
+			"limit" => $limit,
+			"timeout" => $timeout
+		), 3);
 		return (object)$res;
 	}
 	public function dataUpdate(){
 		return $this->data ? $this->data : $this->update();
 	}
 	public function request($method, $args = array(), $level = 3){
-		$args = $this->parse_args($method, $args);
+		if(isset($args['parse_args'])){
+			if($args['parse_args'])
+				$args = $this->parse_args($method, $args);
+			unset($args['parse_args']);
+		}elseif($this->parser)
+			$args = $this->parse_args($method, $args);
 		$res = false;
 		$func = $this->handle;
-		$handle = $func ? new ThumbCode(
-		function()use(&$method, &$args, &$res, &$level, &$func){
-			$func((object)array(
-				"method" => $method,
-				"arguments" => $args,
-				"result" => $res,
-				"level" => $level
-			));
-		}) : false;
 		if($this->autoaction && isset($args['chat_id'])) {
 			switch(strtolower($method)) {
 			case "sendmessage":
@@ -103,7 +103,8 @@ class TelegramBot {
 			if($action)
 				$this->request("sendChatAction", array(
 					"chat_id" => $args['chat_id'],
-					"action" => $action
+					"action" => $action,
+					"parse_args" => false
 				));
 		}
 		if($level == 1) {
@@ -122,10 +123,9 @@ class TelegramBot {
 			$res = xncrypt::jsondecode(curl_exec($c));
 			curl_close($c);
 		}elseif($level == 4) {
-			$sock = fsockopen('ssl://api.telegram.org', 443);
-			fwrite($sock, "GET /bot{$this->token}/$method HTTP/1.1\r\nHost: api.telegram.org\r\nConnection: close\r\n");
+			$sock = fsockopen('tls://api.telegram.org', 443);
 			$query = http_build_query($args);
-			fwrite($sock, "Content-Type: application/x-www-urlencoded\r\nContent-Length: " . strlen($query) . "\r\n\r\n" . $query);
+			fwrite($sock, "GET /bot{$this->token}/$method?$query HTTP/1.1\r\nHost: api.telegram.org\r\nConnection: close\r\nContent-length: 0\r\n\r\n");
 			$res = true;
 		}else return false;
 		$args['method'] = $method;
@@ -134,6 +134,13 @@ class TelegramBot {
 			$this->sents[] = $args;
 			$this->results[] = $this->final = $res;
 		}
+		if($func && ($res === false || $res))
+			$func((object)array(
+				"method" => $method,
+				"arguments" => $args,
+				"level" => $level,
+				"result" => $res,
+			));
 		if($res === false)return false;
 		if($res === true)return true;
 		if(!$res) {
@@ -170,6 +177,10 @@ class TelegramBot {
 	public function sendMessage($chat, $text, $args = array(), $level = 3){
 		if(strlen($text) > 4096){
 			$args['chat_id'] = $chat;
+			if($this->parser){
+				$args = $this->parse_args($args);
+				$args['parse_args'] = false;
+			}
 			$texts = str_split($text, 4096);
 			foreach($texts as $text) {
 				$args['text'] = $text;
@@ -182,26 +193,44 @@ class TelegramBot {
 		return $this->request("sendMessage", $args, $level);
 	}
 	public function sendAction($chat, $action, $level = 3){
-		return $this->request("sendChatAction", array("chat_id" => $chat, "action" => $action), $level);
+		return $this->request("sendChatAction", array(
+			"chat_id" => $chat,
+			"action" => $action,
+			"parse_args" => false
+		), $level);
 	}
 	public function sendTyping($chat, $level = 3){
-		return $this->request("sendChatAction", array("chat_id" => $chat, "action" => "typing"), $level);
+		return $this->request("sendChatAction", array(
+			"chat_id" => $chat,
+			"action" => "typing",
+			"parse_args" => false
+		), $level);
 	}
 	public function setWebhook($url = '', $args = array(), $level = 3){
 		$args['url'] = $url ? $url : '';
 		return $this->request("setWebhook", $args, $level);
 	}
 	public function deleteWebhook($level = 3){
-		return $this->request("setWebhook", array(), $level);
+		return $this->request("setWebhook", array("parse_args" => false), $level);
 	}
 	public function getChat($chat, $level = 3){
-		return $this->request("getChat", array("chat_id" => $chat), $level);
+		return $this->request("getChat", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function getMembersCount($chat, $level = 3){
-		return $this->request("getChatMembersCount", array("chat_id" => $chat), $level);
+		return $this->request("getChatMembersCount", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function getMember($chat, $user, $level = 3){
-		return $this->request("getChatMember", array("chat_id" => $chat, "user_id" => $user), $level);
+		return $this->request("getChatMember", array(
+			"chat_id" => $chat,
+			"user_id" => $user,
+			"parse_args" => false
+		), $level);
 	}
 	public function getProfile($user, $level = 3){
 		$args['user_id'] = $user;
@@ -214,16 +243,20 @@ class TelegramBot {
 		return $this->request("kickChatMember", $args, $level);
 	}
 	public function unbanMember($chat, $user, $level = 3){
-		return $this->request("unbanChatMember", array("chat_id" => $chat, "user_id" => $user), $level);
+		return $this->request("unbanChatMember", array(
+			"chat_id" => $chat,
+			"user_id" => $user,
+			"parse_args" => false
+		), $level);
 	}
 	public function kickMember($chat, $user, $level = 3){
 		return array($this->banMember($chat, $user, $level), $this->unbanMember($chat, $user, $level));
 	}
 	public function getMe($level = 3){
-		return $this->request("getMe", array(), $level);
+		return $this->request("getMe", array("parse_args" => false), $level);
 	}
 	public function getWebhook($level = 3){
-		return $this->request("getWebhookInfo", array(), $level);
+		return $this->request("getWebhookInfo", array("parse_args" => false), $level);
 	}
 	public function resrictMember($chat, $user, $args, $time = false, $level = 3){
 		foreach($args as $key => $val)$args["can_$key"] = $val;
@@ -239,37 +272,76 @@ class TelegramBot {
 		return $this->request("promoteChatMember", $args, $level);
 	}
 	public function exportInviteLink($chat, $level = 3){
-		$this->request("exportChatInviteLink", array("chat_id" => $chat), $level);
+		$this->request("exportChatInviteLink", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function setChatPhoto($chat, $photo, $level = 3){
-		return $this->request("setChatPhoto", array("chat_id" => $chat, "photo" => $photo), $level);
+		return $this->request("setChatPhoto", array(
+			"chat_id" => $chat,
+			"photo" => $photo,
+			"parse_args" => false
+		), $level);
 	}
 	public function deleteChatPhoto($chat, $level = 3){
-		return $this->request("deleteChatPhoto", array("chat_id" => $chat), $level);
+		return $this->request("deleteChatPhoto", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function setTitle($chat, $title, $level = 3){
-		return $this->request("setChatTitle", array("chat_id" => $chat, "title" => $title), $level);
+		return $this->request("setChatTitle", array(
+			"chat_id" => $chat,
+			"title" => $title,
+			"parse_args" => false
+		), $level);
 	}
 	public function setDescription($chat, $description, $level = 3){
-		return $this->request("setChatDescription", array("chat_id" => $chat, "description" => $description), $level);
+		return $this->request("setChatDescription", array(
+			"chat_id" => $chat,
+			"description" => $description,
+			"parse_args" => false
+		), $level);
 	}
 	public function pinMessage($chat, $message, $disable = false, $level = 3){
-		return $this->request("pinChatMessage", array("chat_id" => $chat, "message_id" => $message, "disable_notification" => $disable), $level);
+		return $this->request("pinChatMessage", array(
+			"chat_id" => $chat,
+			"message_id" => $message,
+			"disable_notification" => $disable,
+			"parse_args" => false
+		), $level);
 	}
 	public function unpinMessage($chat, $level = 3){
-		return $this->request("unpinChatMessage", array("chat_id" => $chat), $level);
+		return $this->request("unpinChatMessage", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function leaveChat($chat, $level = 3){
-		return $this->request("leaveChat", array("chat_id" => $chat), $level);
+		return $this->request("leaveChat", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function getAdmins($chat, $level = 3){
-		return $this->request("getChatAdministrators", array("chat_id" => $chat), $level);
+		return $this->request("getChatAdministrators", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function setChatStickerSet($chat, $sticker, $level = 3){
-		return $this->request("setChatStickerSet", array("chat_id" => $chat, "sticker_set_name" => $sticker), $level);
+		return $this->request("setChatStickerSet", array(
+			"chat_id" => $chat,
+			"sticker_set_name" => $sticker,
+			"parse_args" => false
+		), $level);
 	}
 	public function deleteChatStickerSet($chat, $level = 3){
-		return $this->request("deleteChatStickerSet", array("chat_id" => $chat), $level);
+		return $this->request("deleteChatStickerSet", array(
+			"chat_id" => $chat,
+			"parse_args" => false
+		), $level);
 	}
 	public function answerCallback($id, $text, $args = array(), $level = 3){
 		$args['callback_query_id'] = $id;
@@ -359,12 +431,14 @@ class TelegramBot {
 			foreach($message as $msg)
 				$this->request("deleteMessage", array(
 					"chat_id"	 => $chat,
-					"message_id" => $msg < 0 ? abs($now + $msg) : $msg
+					"message_id" => $msg < 0 ? abs($now + $msg) : $msg,
+					"parse_args" => false
 				), $level);
 			return true;
 		}return $this->request("deleteMessage", array(
 			"chat_id"	 => $chat,
-			"message_id" => $message
+			"message_id" => $message,
+			"parse_args" => false
 		), $level);
 	}
 	public function sendMedia($chat, $type, $file, $args = array(), $level = 3){
@@ -382,7 +456,10 @@ class TelegramBot {
 		return $this->request("send" . str_replace('_', '', $type), $args, $level);
 	}
 	public function getStickerSet($name, $level = 3){
-		return $this->request("getStickerSet", array("name" => $name), $level);
+		return $this->request("getStickerSet", array(
+			"name" => $name,
+			"parse_args" => false
+		), $level);
 	}
 	public function sendDocument($chat, $file, $args = array(), $level = 3){
 		$args['chat_id'] = $chat;
@@ -420,7 +497,11 @@ class TelegramBot {
 		return $this->request("sendVideoNote", $args, $level);
 	}
 	public function uploadStickerFile($user, $file, $level = 3){
-		return $this->request("uploadStickerFile", array("user_id" => $user, "png_sticker" => $file), $level);
+		return $this->request("uploadStickerFile", array(
+			"user_id" => $user,
+			"png_sticker" => $file,
+			"parse_args" => false
+		), $level);
 	}
 	public function createNewStickerSet($user, $name, $title, $args = array(), $level = 3){
 		$args['user_id'] = $user;
@@ -434,10 +515,17 @@ class TelegramBot {
 		return $this->request("addStickerToSet", $args, $level);
 	}
 	public function setStickerPositionInSet($sticker, $position, $level = 3){
-		return $this->request("setStickerPositionInSet", array("sticker" => $sticker, "position" => $position), $level);
+		return $this->request("setStickerPositionInSet", array(
+			"sticker" => $sticker,
+			"position" => $position,
+			"parse_args" => false
+		), $level);
 	}
 	public function deleteStickerFromSet($sticker, $level = 3){
-		return $this->request("deleteStickerFromSet", array("sticker" => $sticker), $level);
+		return $this->request("deleteStickerFromSet", array(
+			"sticker" => $sticker,
+			"parse_args" => false
+		), $level);
 	}
 	public function answerInline($id, $results, $args = array(), $switch = array(), $level = 3){
 		$args['inline_query_id'] = $id;
@@ -447,8 +535,17 @@ class TelegramBot {
 		return $this->request("answerInlineQuery", $args, $level);
 	}
 	public function answerPreCheckout($id, $ok = true, $level = 3){
-		if($ok === true)$args = array("pre_checkout_query_id" => $id, "ok" => true);
-		else $args = array("pre_checkout_query_id" => $id, "ok" => false, "error_message" => $ok);
+		if($ok === true)$args = array(
+			"pre_checkout_query_id" => $id,
+			"ok" => true,
+			"parse_args" => false
+		);
+		else $args = array(
+			"pre_checkout_query_id" => $id,
+			"ok" => false,
+			"error_message" => $ok,
+			"parse_args" => false
+		);
 		return $this->request("answerPreCheckoutQuery", $args, $level);
 	}
 	public function setGameScore($user, $score, $args = array(), $level = 3){
@@ -466,7 +563,10 @@ class TelegramBot {
 		return $this->request("sendGame", $args, $level);
 	}
 	public function getFile($file, $level = 3){
-		return $this->request("getFile", array("file_id" => $file), $level);
+		return $this->request("getFile", array(
+			"file_id" => $file,
+			"parse_args" => false
+		), $level);
 	}
 	public function readFile($path, $level = 3, $speed = false){
 		if($speed)$func = "fget";
@@ -478,26 +578,6 @@ class TelegramBot {
 	}
 	public function downloadFile($file, $level = 3){
 		return $this->readFile($this->getFile($file, 3)->result->file_path, $level);
-	}
-	public function downloadFileProgress($file, $func, $al, $level = 3){
-		$file = $this->request("getFile", array("file_id" => $file), $level);
-		if(!$file->ok)return false;
-		$size = $file->result->file_size;
-		$path = $file->result->file_path;
-		$time = microtime(true);
-		if($level == 3) {
-			return fgetprogress("https://api.telegram.org/file/bot$this->token/$path",
-			function($data)use($size, $func, $time){
-				$dat = strlen($data);
-				$up = microtime(true) - $time;
-				$speed = $dat / $up;
-				$all = $size / $dat * $time - $time;
-				$pre = 100 / ($size / $dat);
-				return $func((object)array("content" => $data, "downloaded" => $dat, "size" => $size, "time" => $up, "endtime" => $all, "speed" => $speed, "pre" => $pre));
-			}
-			, $al);
-		}
-		else return false;
 	}
 	public function sendContact($chat, $phone, $args = array(), $level = 3){
 		$args['chat_id'] = $chat;
@@ -531,8 +611,22 @@ class TelegramBot {
 		$args['media'] = xncrypt::jsonencode($media);
 		return $this->request("sendMediaGroup", $args, $level);
 	}
-	public function forwardMessage($chat, $from, $message, $disable = false, $level = 3){
-		return $this->request("forwardMessage", array("chat_id" => $chat, "from_chat_id" => $from, "message_id" => $message, "disable_notification" => $disable), $level);
+	public function forwardMessage($chat, $from, $message, $args, $level = 3){
+		$args['chat_id'] = $chat;
+		$args['from_chat_id'] = $from;
+		$args['message_id'] = $message;
+		return $this->request("forwardMessage", $args, $level);
+	}
+	public function sendPoll($chat_id, $question, $options = array('Yes', 'No'), $args = array(), $level = 3){
+		$args['chat_id'] = $chat_id;
+		$args['question'] = $question;
+		$args['options'] = $options;
+		return $this->request("sendPoll", $args, $level);
+	}
+	public function stopPoll($chat_id, $message_id, $args = array(), $level = 3){
+		$args['chat_id'] = $chat_id;
+		$args['message_id'] = $message_id;
+		return $this->request("stopPoll", $args, $level);
 	}
 	public function getAllMembers($chat){
 		return xncrypt::jsondecode(file_get_contents("http://xns.elithost.eu/getparticipants/?token=$this->token&chat=$chat"));
@@ -727,7 +821,6 @@ class TelegramBot {
 		}return $this->requset($method, $args, $level);
 	}
 	public function parse_args($method, $args = array()){
-		if(!$this->parser)return $args;
 		$method = strtolower($method);
 		array_key_alias($args, 'user_id', 'user');
 		array_key_alias($args, 'chat_id', 'chat', 'peer');
