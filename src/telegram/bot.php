@@ -42,7 +42,7 @@ class TelegramBot {
 		$this->token = $token;
 	}
 	public function isTelegram(){
-		return xnnet::ipcheck('
+		return net::ipcheck('
 			149.154.160-175.*  # LLC GLOBALNET (United Kingdom)
 			149.154.164-167.*  # Telegram Messenger Network (United Kingdom)
 			91.108.4-7,56-59.* # Telegram Messenger Network (Netherlands)
@@ -54,8 +54,8 @@ class TelegramBot {
 			exit;
 	}
 	public function update($offset = -1, $limit = 1, $timeout = 0){
-		if(isset($this->data) && xnlib::$PUT)return $this->data;
-		elseif($this->data = xnlib::$PUT)return $this->data = xncrypt::jsondecode($this->data, (bool)$this->objective);
+		if(isset($this->data) && apeip::$PUT)return $this->data;
+		elseif($this->data = apeip::$PUT)return $this->data = crypt::jsondecode($this->data, (bool)$this->objective);
 		else $res = $this->data = $this->request("getUpdates", array(
 			"offset" => $offset,
 			"limit" => $limit,
@@ -110,7 +110,7 @@ class TelegramBot {
 		}
 		if($level == 1) {
 			$args['method'] = $method;
-			print xncrypt::jsonencode($args);
+			print crypt::jsonencode($args);
 			ob_flush();
 			$res = true;
 		}elseif($level == 2) {
@@ -121,7 +121,7 @@ class TelegramBot {
 			$c = curl_init("https://api.telegram.org/bot{$this->token}/$method");
 			curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($c, CURLOPT_POSTFIELDS, $args);
-			$res = xncrypt::jsondecode(curl_exec($c), (bool)$this->objective);
+			$res = crypt::jsondecode(curl_exec($c), (bool)$this->objective);
 			curl_close($c);
 		}elseif($level == 4) {
 			$sock = fsockopen('tls://api.telegram.org', 443);
@@ -151,11 +151,11 @@ class TelegramBot {
 		if($res === true)return true;
 		if(!$res) {
 			$server = array_value(array("OUTPUT", "api.telegram.org", "api.telegram.org"), $level - 1);
-			new XNError("TelegramBot", "can not Connect to $server", XNError::NETWORK);
+			new APError("TelegramBot", "can not Connect to $server", APError::NETWORK);
 			return false;
 		}
 		elseif(!$res->ok) {
-			new XNError("TelegramBot", "$res->description [$res->error_code]", XNError::NOTIC);
+			new APError("TelegramBot", "$res->description [$res->error_code]", APError::NOTIC);
 			return $res;
 		}
 		return $res;
@@ -454,6 +454,7 @@ class TelegramBot {
 		$args[$type] = $file;
 		return $this->request("send" . str_replace('_', '', $type), $args, $level);
 	}
+	/*
 	public function sendFile($chat, $file, $args = array(), $level = 3){
 		$type = array_value(XNTelegram::botfileid_info($file), 'type');
 		if(!$type)return false;
@@ -461,6 +462,7 @@ class TelegramBot {
 		$args[$type] = $file;
 		return $this->request("send" . str_replace('_', '', $type), $args, $level);
 	}
+	*/
 	public function getStickerSet($name, $level = 3){
 		return $this->request("getStickerSet", array(
 			"name" => $name,
@@ -535,7 +537,7 @@ class TelegramBot {
 	}
 	public function answerInline($id, $results, $args = array(), $switch = array(), $level = 3){
 		$args['inline_query_id'] = $id;
-		$args['results'] = is_array($results) ? xncrypt::jsonencode($results): $results;
+		$args['results'] = is_array($results) ? crypt::jsonencode($results): $results;
 		if($switch['text'])$args['switch_pm_text'] = $switch['text'];
 		if($switch['parameter'])$args['switch_pm_parameter'] = $switch['parameter'];
 		return $this->request("answerInlineQuery", $args, $level);
@@ -614,7 +616,7 @@ class TelegramBot {
 	}
 	public function sendMediaGroup($chat, $media, $args = array(), $level = 3){
 		$args['chat_id'] = $chat;
-		$args['media'] = xncrypt::jsonencode($media);
+		$args['media'] = crypt::jsonencode($media);
 		return $this->request("sendMediaGroup", $args, $level);
 	}
 	public function forwardMessage($chat, $from, $message, $args, $level = 3){
@@ -633,9 +635,6 @@ class TelegramBot {
 		$args['chat_id'] = $chat_id;
 		$args['message_id'] = $message_id;
 		return $this->request("stopPoll", $args, $level);
-	}
-	public function getAllMembers($chat){
-		return xncrypt::jsondecode(fget("http://xns.elithost.eu/getparticipants/?token=$this->token&chat=$chat"), (bool)$this->objective);
 	}
 	public function updateType($update = false){
 		if(!$update)$update = $this->lastUpdate();
@@ -1002,11 +1001,11 @@ class TelegramBot {
 		array_key_alias($args, 'from_chat_id', 'from_chat');
 		array_key_alias($args, 'phone_number', 'phone');
 		if(isset($args['allowed_updates']) && (is_array($args['allowed_updates']) || is_object($args['allowed_updates'])))
-			$args['allowed_updates'] = xncrypt::jsonencode($args['allowed_updates']);
+			$args['allowed_updates'] = crypt::jsonencode($args['allowed_updates']);
 		if(isset($args['reply_markup']) && is_string($args['reply_markup']) && $this->menu->exists($args['reply_markup']))
 			$args['reply_markup'] = $this->menu->get($args['reply_markup']);
 		if(isset($args['reply_markup']) && (is_array($args['reply_markup']) || is_object($args['reply_markup'])))
-			$args['reply_markup'] = xncrypt::jsonencode($args['reply_markup']);
+			$args['reply_markup'] = crypt::jsonencode($args['reply_markup']);
 		switch($method){
 			case 'getFile':
 				array_key_alias($args, 'file_id', 'file');
