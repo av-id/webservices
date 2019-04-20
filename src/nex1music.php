@@ -26,7 +26,7 @@ class Nex1Music {
         }else
             $res = implode("\n", get_headers("https://nex1music.ir/$path"));
         $p = stripos($res, "\nlocation: https://nex1music.ir/", 10) + 32;
-        return xncrypt::urldecode(substr($res, $p, strpos($res, "\n", $p) - $p - 2));
+        return crypt::urldecode(substr($res, $p, strpos($res, "\n", $p) - $p - 2));
     }
 
     public static function pageCount($search = ''){
@@ -81,7 +81,7 @@ class Nex1Music {
             if(strpos($title, ' به نام ') === false){
                 if(strpos($title, 'دانلود') === 0)
                     continue;
-                $title = xncrypt::utf8iso88591($title);
+                $title = crypt::utf8iso88591($title);
             }
             $album = strpos($title, 'دانلود آلبوم') === 1;
             $title = $album ? substr($title, 25) : substr($title, 23);
@@ -167,7 +167,7 @@ class Nex1Music {
         if(strpos($title, ' به نام ') === false){
             if(strpos($title, 'دانلود') === 0)
                 return false;
-            $title = xncrypt::utf8iso88591($title);
+            $title = crypt::utf8iso88591($title);
         }
         $album = strpos($title, 'دانلود آلبوم') === 1;
         $title = $album ? substr($title, 25) : substr($title, 23);
