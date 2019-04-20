@@ -214,10 +214,10 @@ class TelegramWeb {
 		$result = curl_exec($ch);
 		curl_close($ch);
 		if(!$result)
-			new XNError("MyTelegram login", "can not Connect to https://my.telegram.org", XNError::NETWORK);
-		$res = xncrypt::jsondecode($result,true);
+			new APError("MyTelegram login", "can not Connect to https://my.telegram.org", APError::NETWORK);
+		$res = aped::jsondecode($result,true);
 		if(!isset($res['random_hash'])) 
-			new XNError("MyTelegram login", $result, XNError::NOTIC);
+			new APEError("MyTelegram login", $result, APError::NOTIC);
 		return $this->hash = $res['random_hash'];
 	}
 	public function complete_login($password){
@@ -246,11 +246,11 @@ class TelegramWeb {
 		$result = curl_exec($ch);
 		curl_close($ch);
 		if(!$result)
-		new XNError("MyTelegram login", "can not Connect to https://my.telegram.org", XNError::NETWORK);
+			new APError("MyTelegram login", "can not Connect to https://my.telegram.org", APError::NETWORK);
 		$header = explode("\r\n\r\n",$result,2);
 		$content = $header[1];
 		if($content != 'true')
-			new XNError("MyTelegram CompleteLogin", $content, XNError::NETWORK);
+			new APError("MyTelegram CompleteLogin", $content, APError::NETWORK);
 		$header = $header[0];
 		$this->logged = true;
 		$token = strpos($header,'stel_token=') + 11;
@@ -326,9 +326,9 @@ class TelegramWeb {
 	}
 	public function create_app($title,$shortname,$url,$platform,$desc){
 		if(!$this->logged)
-			new XNError("MyTelegram CompleteLogin", 'Not logged in!', XNError::NOTIC);
+			new APError("MyTelegram CompleteLogin", 'Not logged in!', APError::NOTIC);
 		if($this->has_app())
-			new XNError("MyTelegram CompleteLogin", 'The app was already created!', XNError::NOTIC);
+			new APError("MyTelegram CompleteLogin", 'The app was already created!', APError::NOTIC);
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, 'https://my.telegram.org/apps/create');
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
