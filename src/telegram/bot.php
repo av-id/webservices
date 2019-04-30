@@ -149,12 +149,11 @@ class TelegramBot {
 			));
 		if($res === false)return false;
 		if($res === true)return true;
-		if(!$res) {
+		if(!isset($res->ok)) {
 			$server = array_value(array("OUTPUT", "api.telegram.org", "api.telegram.org"), $level - 1);
 			new APError("TelegramBot", "can not Connect to $server", APError::NETWORK);
 			return false;
-		}
-		elseif(!$res->ok) {
+		}elseif(!$res->ok) {
 			new APError("TelegramBot", "$res->description [$res->error_code]", APError::NOTIC);
 			return $res;
 		}
