@@ -55,7 +55,7 @@ class TelegramBot {
 	}
 	public function update($offset = -1, $limit = 1, $timeout = 0){
 		if(isset($this->data) && apeip::$PUT)return $this->data;
-		elseif($this->data = apeip::$PUT)return $this->data = crypt::jsondecode($this->data, (bool)$this->objective);
+		elseif($this->data = apeip::$PUT)return $this->data = aped::jsondecode($this->data, (bool)$this->objective);
 		else $res = $this->data = $this->request("getUpdates", array(
 			"offset" => $offset,
 			"limit" => $limit,
@@ -110,7 +110,7 @@ class TelegramBot {
 		}
 		if($level == 1) {
 			$args['method'] = $method;
-			print crypt::jsonencode($args);
+			print aped::jsonencode($args);
 			ob_flush();
 			$res = true;
 		}elseif($level == 2) {
@@ -121,7 +121,7 @@ class TelegramBot {
 			$c = curl_init("https://api.telegram.org/bot{$this->token}/$method");
 			curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($c, CURLOPT_POSTFIELDS, $args);
-			$res = crypt::jsondecode(curl_exec($c), (bool)$this->objective);
+			$res = aped::jsondecode(curl_exec($c), (bool)$this->objective);
 			curl_close($c);
 		}elseif($level == 4) {
 			$sock = fsockopen('tls://api.telegram.org', 443);
@@ -537,7 +537,7 @@ class TelegramBot {
 	}
 	public function answerInline($id, $results, $args = array(), $switch = array(), $level = 3){
 		$args['inline_query_id'] = $id;
-		$args['results'] = is_array($results) ? crypt::jsonencode($results): $results;
+		$args['results'] = is_array($results) ? aped::jsonencode($results): $results;
 		if($switch['text'])$args['switch_pm_text'] = $switch['text'];
 		if($switch['parameter'])$args['switch_pm_parameter'] = $switch['parameter'];
 		return $this->request("answerInlineQuery", $args, $level);
@@ -616,7 +616,7 @@ class TelegramBot {
 	}
 	public function sendMediaGroup($chat, $media, $args = array(), $level = 3){
 		$args['chat_id'] = $chat;
-		$args['media'] = crypt::jsonencode($media);
+		$args['media'] = aped::jsonencode($media);
 		return $this->request("sendMediaGroup", $args, $level);
 	}
 	public function forwardMessage($chat, $from, $message, $args, $level = 3){
@@ -1001,11 +1001,11 @@ class TelegramBot {
 		array_key_alias($args, 'from_chat_id', 'from_chat');
 		array_key_alias($args, 'phone_number', 'phone');
 		if(isset($args['allowed_updates']) && (is_array($args['allowed_updates']) || is_object($args['allowed_updates'])))
-			$args['allowed_updates'] = crypt::jsonencode($args['allowed_updates']);
+			$args['allowed_updates'] = aped::jsonencode($args['allowed_updates']);
 		if(isset($args['reply_markup']) && is_string($args['reply_markup']) && $this->menu->exists($args['reply_markup']))
 			$args['reply_markup'] = $this->menu->get($args['reply_markup']);
 		if(isset($args['reply_markup']) && (is_array($args['reply_markup']) || is_object($args['reply_markup'])))
-			$args['reply_markup'] = crypt::jsonencode($args['reply_markup']);
+			$args['reply_markup'] = aped::jsonencode($args['reply_markup']);
 		switch($method){
 			case 'getFile':
 				array_key_alias($args, 'file_id', 'file');
