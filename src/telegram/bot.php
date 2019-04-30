@@ -810,7 +810,7 @@ class TelegramBot {
 			if(isset($message->document))return "document";
 			if(isset($message->video_note))return "videonote";
 			if(isset($message->thumb_nail))return "thumb_nail";
-		else{
+		}else{
 			if(!$message){
 				$message = $this->lastUpdate();
 				if(!isset($message['message']))return false;
