@@ -712,7 +712,7 @@ class TelegramBot {
 	public function getUser($update = false){
 		$update = $this->getUpdateInType($update);
 		if(!$update)return false;
-		if($objective){
+		if($this->objective){
 			if(isset($update->message))return (object)array('chat' => $update->message->chat, 'from' => $update->message->from);
 			if(isset($update->chat))return (object)array('chat' => $update->chat, 'from' => $update->from);
 			if(isset($update->from))return (object)array('chat' => $update->from, 'from' => $update->from);
