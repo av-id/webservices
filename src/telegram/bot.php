@@ -637,15 +637,26 @@ class TelegramBot {
 	}
 	public function updateType($update = false){
 		if(!$update)$update = $this->lastUpdate();
-		if(isset($update->message))return "message";
-		elseif(isset($update->callback_query))return "callback_query";
-		elseif(isset($update->chosen_inline_result))return "chosen_inline_result";
-		elseif(isset($update->inline_query))return "inline_query";
-		elseif(isset($update->channel_post))return "channel_post";
-		elseif(isset($update->edited_message))return "edited_message";
-		elseif(isset($update->edited_channel_post))return "edited_channel_post";
-		elseif(isset($update->shipping_query))return "shipping_query";
-		elseif(isset($update->pre_checkout_query))return "pre_checkout_query";
+		if($this->objective)
+			if(isset($update->message))return "message";
+			elseif(isset($update->callback_query))return "callback_query";
+			elseif(isset($update->chosen_inline_result))return "chosen_inline_result";
+			elseif(isset($update->inline_query))return "inline_query";
+			elseif(isset($update->channel_post))return "channel_post";
+			elseif(isset($update->edited_message))return "edited_message";
+			elseif(isset($update->edited_channel_post))return "edited_channel_post";
+			elseif(isset($update->shipping_query))return "shipping_query";
+			elseif(isset($update->pre_checkout_query))return "pre_checkout_query";
+		else
+			if(isset($update['message']))return "message";
+			elseif(isset($update['callback_query']))return "callback_query";
+			elseif(isset($update['chosen_inline_result']))return "chosen_inline_result";
+			elseif(isset($update['inline_query']))return "inline_query";
+			elseif(isset($update['channel_post']))return "channel_post";
+			elseif(isset($update['edited_message']))return "edited_message";
+			elseif(isset($update['edited_channel_post']))return "edited_channel_post";
+			elseif(isset($update['shipping_query']))return "shipping_query";
+			elseif(isset($update['pre_checkout_query']))return "pre_checkout_query";
 		return "unknown_update";
 	}
 	public function getUpdateInType($update = false){
