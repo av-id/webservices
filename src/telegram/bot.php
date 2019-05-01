@@ -55,7 +55,7 @@ class TelegramBot {
 	}
 	public function update($offset = -1, $limit = 1, $timeout = 0){
 		if(isset($this->data) && apeip::$PUT)return $this->data;
-		elseif($this->data = apeip::$PUT)return $this->data = aped::jsondecode($this->data, (bool)$this->objective);
+		elseif($this->data = apeip::$PUT)return $this->data = aped::jsondecode($this->data, !$this->objective);
 		else $res = $this->data = $this->request("getUpdates", array(
 			"offset" => $offset,
 			"limit" => $limit,
@@ -121,7 +121,7 @@ class TelegramBot {
 			$c = curl_init("https://api.telegram.org/bot{$this->token}/$method");
 			curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($c, CURLOPT_POSTFIELDS, $args);
-			$res = aped::jsondecode(curl_exec($c), (bool)$this->objective);
+			$res = aped::jsondecode(curl_exec($c), !$this->objective);
 			curl_close($c);
 		}elseif($level == 4) {
 			$sock = fsockopen('tls://api.telegram.org', 443);
