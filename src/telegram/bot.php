@@ -646,6 +646,8 @@ class TelegramBot {
 			elseif(isset($update->edited_channel_post))return "edited_channel_post";
 			elseif(isset($update->shipping_query))return "shipping_query";
 			elseif(isset($update->pre_checkout_query))return "pre_checkout_query";
+			elseif(isset($update->pre_checkout_query))return "pre_checkout_query";
+			else return "unknown";
 		else
 			if(isset($update['message']))return "message";
 			elseif(isset($update['callback_query']))return "callback_query";
@@ -656,7 +658,8 @@ class TelegramBot {
 			elseif(isset($update['edited_channel_post']))return "edited_channel_post";
 			elseif(isset($update['shipping_query']))return "shipping_query";
 			elseif(isset($update['pre_checkout_query']))return "pre_checkout_query";
-		return "unknown_update";
+			elseif(isset($update['pre_checkout_query']))return "poll";
+		return "unknown";
 	}
 	public function getUpdateInType($update = false){
 		$update = $update ? $update : $this->data;
