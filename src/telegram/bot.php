@@ -575,16 +575,15 @@ class TelegramBot {
 			"parse_args" => false
 		), $level);
 	}
-	public function readFile($path, $level = 3, $speed = false){
-		if($speed)$func = "fget";
-		else $func = "file_get_contents";
-		if($level == 3) {
-			return $func("https://api.telegram.org/file/bot$this->token/$path");
-		}
-		else return false;
+	public function readFile($path){
+		return fget("https://api.telegram.org/file/bot$this->token/$path");
 	}
-	public function downloadFile($file, $level = 3){
-		return $this->readFile($this->getFile($file, 3)->result->file_path, $level);
+	public function copyFile($file, $dist){
+		$file = $this->getFile($file)->result->file_path;
+		return copy("https://api.telegram.org/file/bot$this->token/$path", $dist);
+	}
+	public function downloadFile($file){
+		return $this->readFile($this->getFile($file)->result->file_path);
 	}
 	public function sendContact($chat, $phone, $args = array(), $level = 3){
 		$args['chat_id'] = $chat;
