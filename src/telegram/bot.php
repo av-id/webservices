@@ -661,10 +661,6 @@ class TelegramBot {
 			elseif(isset($update['pre_checkout_query']))return "poll";
 		return "unknown";
 	}
-	public function getUpdateInType($update = false){
-		$update = $update ? $update : $this->data;
-		return $update ? $update->{$this->updateType($update)} : false;
-	}
 	public function readUpdates($func, $while = 0, $limit = 1, $timeout = 0){
 		if($while == 0)$while = -1;
 		$offset = 0;
