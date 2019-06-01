@@ -646,7 +646,7 @@ class TelegramBot {
 			elseif(isset($update->edited_channel_post))return "edited_channel_post";
 			elseif(isset($update->shipping_query))return "shipping_query";
 			elseif(isset($update->pre_checkout_query))return "pre_checkout_query";
-			elseif(isset($update->pre_checkout_query))return "pre_checkout_query";
+			elseif(isset($update->poll))return "poll";
 			else return "unknown";
 		else
 			if(isset($update['message']))return "message";
@@ -658,7 +658,34 @@ class TelegramBot {
 			elseif(isset($update['edited_channel_post']))return "edited_channel_post";
 			elseif(isset($update['shipping_query']))return "shipping_query";
 			elseif(isset($update['pre_checkout_query']))return "pre_checkout_query";
-			elseif(isset($update['pre_checkout_query']))return "poll";
+			elseif(isset($update['poll']))return "poll";
+		return "unknown";
+	}
+	public function updateInType($update = false){
+		if(!$update)$update = $this->lastUpdate();
+		if($this->objective)
+			if(isset($update->message))return $update->message;
+			elseif(isset($update->callback_query))return $update->callback_query;
+			elseif(isset($update->chosen_inline_result))return $update->chosen_inline_result;
+			elseif(isset($update->inline_query))return $update->inline_query;
+			elseif(isset($update->channel_post))return $update->channel_post;
+			elseif(isset($update->edited_message))return $update->edited_message;
+			elseif(isset($update->edited_channel_post))return $update->edited_channel_post;
+			elseif(isset($update->shipping_query))return $update->shipping_query;
+			elseif(isset($update->pre_checkout_query))return $update->pre_checkout_query;
+			elseif(isset($update->poll))return $update->poll;
+			else return "unknown";
+		else
+			if(isset($update['message']))return $update['message'];
+			elseif(isset($update['callback_query']))return $update['callback_query'];
+			elseif(isset($update['chosen_inline_result']))return $update['chosen_inline_result'];
+			elseif(isset($update['inline_query']))return $update['inline_query'];
+			elseif(isset($update['channel_post']))return $update['channel_post'];
+			elseif(isset($update['edited_message']))return $update['edited_message'];
+			elseif(isset($update['edited_channel_post']))return $update['edited_channel_post'];
+			elseif(isset($update['shipping_query']))return $update['shipping_query'];
+			elseif(isset($update['pre_checkout_query']))return $update['pre_checkout_query'];
+			elseif(isset($update['poll']))return $update['poll'];
 		return "unknown";
 	}
 	public function readUpdates($func, $while = 0, $limit = 1, $timeout = 0){
@@ -708,7 +735,7 @@ class TelegramBot {
 		}
 	}
 	public function getUser($update = false){
-		$update = $this->getUpdateInType($update);
+		$update = $this->updateInType($update);
 		if(!$update)return false;
 		if($this->objective){
 			if(isset($update->message))return (object)array('chat' => $update->message->chat, 'from' => $update->message->from);
@@ -722,7 +749,7 @@ class TelegramBot {
 		return false;
 	}
 	public function getMessage($update = false){
-		$update = $this->getUpdateInType($update);
+		$update = $this->updateInType($update);
 		if(!$update)return false;
 		if($this->objective){
 			if(isset($update->message_id))return $update->message_id;
@@ -734,7 +761,7 @@ class TelegramBot {
 		return false;
 	}
 	public function getDate($update = false){
-		$update = $this->getUpdateInType($update);
+		$update = $this->updateInType($update);
 		if(!$update)return false;
 		if($this->objective){
 			if(isset($update->date))return $update->date;
@@ -746,7 +773,7 @@ class TelegramBot {
 		return false;
 	}
 	public function getData($update = false){
-		$update = $this->getUpdateInType($update);
+		$update = $this->updateInType($update);
 		if(!$update)return false;
 		if($this->objective){
 			if(isset($update->text))return $update->text;
