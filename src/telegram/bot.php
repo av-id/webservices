@@ -173,9 +173,6 @@ class TelegramBot {
 		$this->data = null;
 	}
 	public function close(){
-		$this->__destruct();
-	}
-	public function __destruct(){
 		$this->final = null;
 		$this->results = null;
 		$this->sents = null;
@@ -185,6 +182,9 @@ class TelegramBot {
 			$notr = $this->notresponse;
 			$notr();
 		}
+	}
+	public function __destruct(){
+		$this->close();
 	}
 	public function sendMessage($chat, $text, $args = array(), $level = 3){
 		if(strlen($text) > 4096){
@@ -284,7 +284,7 @@ class TelegramBot {
 		return $this->request("promoteChatMember", $args, $level);
 	}
 	public function exportInviteLink($chat, $level = 3){
-		$this->request("exportChatInviteLink", array(
+		return $this->request("exportChatInviteLink", array(
 			"chat_id" => $chat,
 			"parse_args" => false
 		), $level);
