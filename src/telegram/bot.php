@@ -126,7 +126,14 @@ class TelegramBot {
 		}elseif($level == 4) {
 			$sock = fsockopen('tls://api.telegram.org', 443);
 			$query = http_build_query($args);
-			fwrite($sock, "GET /bot{$this->token}/$method?$query HTTP/1.1\r\nHost: api.telegram.org\r\nConnection: close\r\nContent-length: 0\r\n\r\n");
+			$length = strlen($query);
+			$data = "POST /bot{$this->token}/$method HTTP/1.1\r\n";
+			$data.= "Host: api.telegram.org\r\n";
+			$data.="Connection: close\r\n";
+			$data.="Content-type: application/x-www-form-urlencoded\r\n";
+			$data.="Content-length: $length\r\n\r\n";
+			$data.= $query;
+			fwrite($sock, $data);
 			$res = true;
 		}else return false;
 		$args['method'] = $method;
